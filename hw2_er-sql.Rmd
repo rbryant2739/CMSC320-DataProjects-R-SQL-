@@ -1,0 +1,111 @@
+---
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+## ER Diagram
+
+
+![](/Users/Ray/Pictures/ERD_baseball.JPG)
+
+## SQL
+
+```{r setupdb, include=FALSE}
+
+db <- DBI::dbConnect(RSQLite::SQLite(), "lahman2016.sqlite")
+```
+
+
+
+1) How many franchises are listed in the database (see [`count`](https://sqlite.org/lang_aggfunc.html#count))?
+
+120
+
+```{sql q1, connection=db, eval=TRUE}
+
+select count(franchID)
+ from TeamsFranchises
+ 
+```
+
+2) How many franchises are currently active?
+
+30
+
+```{sql q2, connection=db, eval=TRUE}
+select count(franchID) as ActiveFranchises
+from TeamsFranchises
+where active = "Y"
+```
+
+3) Which teams won more than 100 games in one season between 2000 and 2015? Order result by descending number of wins. (attribute `W` of the Teams table contains the number of wins)
+
+```{sql q3, connection=db, eval=TRUE}
+
+select teamID, W
+  from Teams
+    where W > 100 and yearID >= 2000 and yearID <= 2015
+  order by W desc
+```
+
+
+4) What is the franchise name of the team with the most total wins in the database?
+
+San Francisco Giants, with 10,951 wins
+
+```{sql q4, connection=db, eval=TRUE}
+
+
+select franchName, sum(W)
+  from TeamsFranchises
+  Left join Teams
+    on Teams.franchID = TeamsFranchises.franchID
+  group by TeamsFranchises.franchID
+  order by sum(W) desc
+  LIMIT 1
+  
+```
+
+5) What is the franchise name of the team with the highest winning percentage in a season in the database? (Win percentage is `W/G`)
+
+The Boston Red Stockings had the highest win percentage with 86.6% in the year 1875
+
+```{sql q5, connection=db, eval=TRUE}
+select franchName, (1.0 * W / G), yearID
+  from TeamsFranchises
+  Left join Teams
+    on Teams.franchID = TeamsFranchises.franchID
+  group by TeamsFranchises.franchID, yearID
+  order by (1.0 * W / G) desc
+  Limit 1
+  
+
+```
+
+6) What is the franchise name of the team with the highest single-year payroll between 2000 and 2015?
+
+The New York Yankees at the highest single-year payroll between 2000 & 2015
+with 231,978,886 in 2013
+
+```{sql q6, connection=db, eval=TRUE}
+Select franchName, SUM(salary), Salaries.yearID
+from TeamsFranchises
+left join Teams 
+  on TeamsFranchises.franchID = Teams.franchID
+left join Salaries
+  on Teams.teamID = Salaries.teamID and Teams.yearID = Salaries.yearID
+group by Salaries.teamID, Salaries.yearID, Teams.yearID
+order by SUM(salary) desc
+limit 1
+
+```
+
+7) (BONUS from [MDSR book](https://mdsr-book.github.io/)): Identify players (by first and last name) that have attained through their career either a) 500 or more HRs or b) 3000 or more hits (H) _and_ have not been inducted to the Hall of Fame (see `HallOfFame` table).
+
+```{sql q7, connection=db, eval=FALSE}
+```
+
+```{r disconnectdb, include=FALSE}
+DBI::dbDisconnect(db)
+```

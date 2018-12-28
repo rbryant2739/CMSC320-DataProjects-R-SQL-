@@ -1,0 +1,536 @@
+---
+title: "Project_3_part_1"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(gapminder)
+library(ggplot2)
+library(broom)
+data(gapminder)
+
+```
+
+Exercise 1:
+
+For exercise 1, I simply made a scatter plot using the attribute year as the x coordinate & the life expectancy the y coordinate. I also made a violin plot to make the data easier to interpret. In my violin plot I added the mean Life Expectancy as a filled in point on the violin plot, as well as adding a box-plot again to make it more readable. I also set trim = FALSE so that it wouldn't trim the values outside of the violin shape.
+
+```{r scat_plot}
+
+gapminder %>%
+  ggplot(aes(x=factor(year), y=lifeExp)) +
+    geom_point() +
+    labs(title="Life Expectancy Over Time",
+         x = "Year",
+         y = "Life Expectancy")
+
+```
+
+```{r violin_plot}
+gapminder %>% 
+  group_by(year) %>%
+  mutate(avg_life_exp = mean(lifeExp)) %>%
+  ungroup() %>%
+  ggplot(aes(x=factor(year), y=lifeExp)) + 
+  geom_violin(trim=FALSE, fill="gray")+
+  labs(title="Life Expectancy Over Time",
+       x="Year", y = "Life Expectancy")+
+  geom_boxplot(width=0.1)+
+  geom_point(aes(x=factor(year), y = avg_life_exp)) +
+  theme_classic()
+
+```
+
+
+Question 1:
+
+It is pretty easy to determine, from interpreting the plots, that there is an increasing linear trend in the plots where life expectancy increases as the years go on. 
+
+Question 2:
+
+I would say the data is skewed looking at my plot. Most of the years have a much higher likelihood of life expectency above or below the mean than the other side. I probably worded that terribly, so as an example in 1952, the wideness of the portion of the violin near the bass and below the mean is much larger than the wideness above the mean. The opposite is true in later years such as 2007, where a life is much more likely to last longer than the mean than it is to last less than the mean. For some years the data looks to be more unimodal than others. Year 2007 looks fairly unimodal because there is one distinct peak around 70 years of life expectancy, where as 1967 looks to be more bimodal with two peaks just below 50, and again around 70 years of life expectancy. Year 1967 is the most symmetric distribution of data, however overall most years are definitely antisymmetric. 
+
+
+Question 3:
+
+I would absolutely reject the null hypothesis because there seems to be a direct correlation in the year and life expectancy rate. Medical advances have lead to longer lives and lower infant mortality rates which have greatly impacted the life expectancy as years have gone on. 
+
+Question 4:
+
+The data does appear to be linear, however I do believe there are other variables at play other than simply the year (medical advances, continental circumstance, etc). Due to this, I would not be surprised to see a pattern in the residual plot because it could be accounting for some level of error predictability for a missing variable. But simply going off of the previous exercises and questions and data, I would expect there to be a randomness to the residuals with no predictable error and for the plot to be centered around 0. Also further rationalizing it in my head, I would think that those other possible variables are also linearly dependent on time which would further back the randomness of residuals.  
+
+Question 5: 
+
+For a linear model, the violin plot of residuals should be random and not look symmetric. They should also center around the value 0. 
+
+Exercise 2:
+
+First plotted scatter plot then ran regression line. Then used the tidy() function in the next chunk of code.
+
+```{r tidy_gap_plot }
+
+gapminder %>%
+  ggplot(aes(x=year, y=lifeExp)) +
+    geom_point() +
+    geom_smooth(method = lm)
+
+
+```
+
+```{r model_stats}
+tidy_data <- lm(year~lifeExp, gapminder) %>%
+  tidy()
+
+tidy_data
+
+```
+
+Question 6:
+
+As the estimate indicates, the average life expectancy grows 0.5822489 each year.
+
+Question 7:
+
+Yes we reject the null hypothesis because the p value is 7.55 * 10^(-80) (very very small). This means that we reject the hypothesis that there is no correlation between year and life expectancy. 
+
+Excercise 3:
+Created pipeline using lm() function and then called augment() & plotted the same style of violin plot as in the first exercise. 
+```{r residual_plot}
+lm(year~lifeExp, gapminder) %>%
+  augment() %>%
+  group_by(year) %>%
+  mutate(avg_resid = mean(.resid)) %>%
+  ungroup() %>%
+  ggplot(aes(x=factor(year), y=.resid)) +
+    geom_violin(trim = FALSE, fill = "gray") +
+    labs(title="Residuals Over Time",
+         x = "Year",
+         y = "Residual") +
+    geom_boxplot(width=0.1)+
+    geom_point(aes(x=factor(year), y = avg_resid)) +
+    theme_classic()
+
+
+```
+
+
+Question 8:
+
+The regions with the highest probability of a residual landing in them (the wide parts of the violin) all seem to be close to zero which is expected behavior. However the look of the violin seem to follow a linear pattern. Maybe it would be more random as a scatterplot. 
+
+``` {r box_continent}
+
+lm(year~continent, data=gapminder) %>%
+  augment() %>%
+  ggplot(aes(x=factor(continent), y=.resid)) +
+    geom_boxplot() +
+    labs(title="Residual vs. Continent",
+         x = "Continent",
+         y = "Residual")
+```
+
+Question 9:
+
+No there is no dependence between error and continents it appears. The box plots look nearly identical for every country. If there was a dependence it would indicate that continent is a dependent variable on life expectancy over time. However this indicates that they are independent from one another.
+
+Exercise 5:
+
+
+```{r color_continent}
+
+gapminder %>%
+  ggplot(aes(x=year, y=lifeExp, color=continent)) +          geom_point() + 
+    geom_smooth(method=lm)
+
+```
+
+
+Question 10:
+
+Contrary to what I gathered in question 9, the continents do in fact seem to play a roll in life expectancy. So yes there should be an interaction term for both continent & year. 
+
+Exercise 6:
+
+```{r sum_interaction}
+summary(lm(lifeExp~continent*year, data=gapminder))
+```
+
+
+Question 11:
+
+No, the year estimates are not significantly different from 0, and neither are their standard deviations. 
+
+Question 12:
+
+```{r tidy_summary}
+summary(lm(lifeExp~continent*year, data=gapminder)) %>%
+  tidy()
+```
+
+Americas: 0.07812167 increase on average each year.
+
+Asia: 0.16359314 increase on average each year.
+
+Europe: -0.06759712 increase on average, or 0.06759712 decrease on average each year. 
+
+Oceania: -0.07925689 increase on average, or 0.07925689 decrease on average each year.
+
+
+Exercise 7: 
+
+```{r anova_function_year}
+anova(lm(year~lifeExp, gapminder))
+
+```
+
+```{r anova_function_interaction}
+anova(lm(lifeExp~continent*year, data=gapminder))
+```
+
+Question 13: 
+
+The smaller residual sum squared value in the continent year interaction model (87320) indicates that it does a better job of fitting the estimate to the actual data than using just the year as a variable for life expectancy where the RSS was much larger (411320).
+
+
+
+Exercise 8:
+
+Did the same thing as exercise 3 but used the interaction of continent & year instead of just using year. 
+
+```{r augmented_plot}
+lm(lifeExp~continent*year, data=gapminder) %>%
+  augment() %>%
+  group_by(year) %>%
+  mutate(avg_resid = mean(.resid)) %>%
+  ungroup() %>%
+  ggplot(aes(x=factor(year), y=.resid)) +
+    geom_violin(trim = FALSE, fill = "gray") +
+    labs(title="Residuals Over Time",
+         x = "Year",
+         y = "Residual") +
+    geom_boxplot(width=0.1)+
+    geom_point(aes(x=factor(year), y = avg_resid)) +
+    theme_classic()
+```
+
+The violin model fits very well because the values are centered around 0, and the means are all very close to 0. 
+
+```{r fitted_aug_plot}
+lm(lifeExp~continent*year, data=gapminder) %>%
+  augment() %>%
+  ggplot(aes(x=factor(.fitted), y=.resid)) +
+    geom_point() +
+    labs(title="Residuals Over Time",
+         x = "Year",
+         y = "Residual") 
+   
+
+```
+
+The scatter plot using .fitted also fits the model perfectly. The residuals follow no pattern and center on 0. 
+
+=========================================================
+=========================================================
+
+PART 2:
+
+1)
+
+```{r setup_2}
+library(tidyverse)
+library(lubridate)
+theme_set(theme_bw())
+
+```
+
+
+```{r code_chunk}
+
+csv_file <- "Affordability_Wide_2017Q4_Public.csv"
+tidy_afford <- read_csv(csv_file) %>%
+  filter(Index == "Mortgage Affordability") %>%
+  drop_na() %>%
+  filter(RegionID != 0, RegionName != "United States") %>%
+  dplyr::select(RegionID, RegionName, matches("^[1|2]")) %>%
+  gather(time, affordability, matches("^[1|2]")) %>%
+  type_convert(col_types=cols(time=col_date(format="%Y-%m")))
+tidy_afford
+
+```
+```{r displayed_data}
+tidy_afford %>%
+  ggplot(aes(x=time,y=affordability,group=factor(RegionID))) +
+  geom_line(color="GRAY", alpha=3/4, size=1/2) +
+  labs(title="County-Level Mortgage Affordability over Time",
+          x="Date", y="Mortgage Affordability")
+
+```
+
+
+```{r outcome_of_data}
+outcome_df <- tidy_afford %>%
+  mutate(yq = quarter(time, with_year=TRUE)) %>%
+  filter(yq %in% c("2016.4", "2017.4")) %>%
+  select(RegionID, RegionName, yq, affordability) %>%
+  spread(yq, affordability) %>%
+  mutate(diff = `2017.4` - `2016.4`) %>%
+  mutate(Direction = ifelse(diff>0, "up", "down")) %>%
+  select(RegionID, RegionName, Direction)
+outcome_df
+
+```
+
+
+2) For part 2 of project 3 I will be comparing the classification algorithms of a random forest tree and a decision tree and determining which one works better as a prediction technique. 
+
+
+```{r setup_for_classifiers}
+predictor_df <- tidy_afford %>%
+  filter(year(time) <= 2016)
+```
+
+First set up the RFT:
+
+```{r random_f_setup}
+standardized_df <- predictor_df %>%
+  filter(year(time) %in% 2014:2016) %>%
+  group_by(RegionID) %>%
+  mutate(mean_aff = mean(affordability)) %>%
+  mutate(sd_aff = sd(affordability)) %>%
+  mutate(z_aff = (affordability - mean_aff) / sd_aff) %>%
+  ungroup()
+
+```
+
+Spread Data
+
+```{r wide_data_frame}
+wide_df <- standardized_df %>%
+  select(RegionID, time, z_aff) %>%
+  tidyr::spread(time, z_aff)
+```
+
+
+
+
+
+
+Turn into quarterly differences
+
+
+```{r quarterly_diff}
+
+matrix_1 <- wide_df %>%
+  select(-RegionID) %>%
+  as.matrix() %>%
+  .[,-1]
+
+matrix_2 <- wide_df %>%
+  select(-RegionID) %>%
+  as.matrix() %>%
+  .[,-ncol(.)]
+
+diff_df <- (matrix_1 - matrix_2) %>%
+  magrittr::set_colnames(NULL) %>%
+  as_data_frame() %>%
+  mutate(RegionID = wide_df$RegionID)
+
+
+```
+
+Now the outcome we want to predict
+
+```{r outcome_data}
+final_df <- diff_df %>%
+  inner_join(outcome_df %>% select(RegionID, Direction), by="RegionID") %>%
+  mutate(Direction=factor(Direction, levels=c("down", "up")))
+final_df
+```
+
+
+Testing/Training regions
+
+
+```{r train_test_split_rft}
+
+set.seed(1234)
+test_random_forest_df <- final_df %>%
+  group_by(Direction) %>%
+  sample_frac(.2) %>%
+  ungroup()
+
+train_random_forest_df <- final_df %>%
+  anti_join(test_random_forest_df, by="RegionID")
+
+```
+
+```{r train_test_split_dt}
+set.seed(1234)
+test_decision_tree_df <- final_df %>%
+  group_by(Direction) %>%
+  sample_frac(.2) %>%
+  ungroup()
+
+train_decision_tree_df <- final_df %>%
+  anti_join(test_decision_tree_df, by="RegionID")
+```
+
+
+
+Random Forest Tree learning
+
+```{r rft_learn}
+library(randomForest)
+
+rf <- randomForest(Direction~., data=train_random_forest_df %>% select(-RegionID))
+rf
+
+```
+
+Decision Tree building
+
+```{r build_dt}
+library(rpart)
+library(rpart.plot)
+
+dt <- rpart(Direction~., data=train_decision_tree_df %>% select(-RegionID))
+
+rpart.plot(dt, type=1, space=3.2, tweak=0.65, extra = 1, main="UP/Down Decision Tree Plot")
+
+```
+
+
+
+
+
+
+Predictions
+
+```{r predict_rft}
+test_predictions_rft <- predict(rf, newdata=test_random_forest_df %>% select(-RegionID))
+
+test_predictions_dt <- predict(dt, newdata=test_decision_tree_df %>% select(-RegionID), type="class")
+
+```
+
+Confusion Matrix
+
+Random Forest Tree confusion matrix
+
+```{r confusion_matrix_rft}
+table(pred=test_predictions_rft, observed=test_random_forest_df$Direction)
+```
+
+```{r confusion_matrix_dt}
+table(pred=test_predictions_dt,
+observed=test_decision_tree_df$Direction)
+
+```
+
+```{r results_data_frame}
+set.seed(1234)
+
+library(caret)
+# create the cross-validation partition
+result_df <- createFolds(final_df$Direction, k=10) %>%
+  # fit models and gather results
+  purrr::imap(function(test_indices, fold_number) {
+    # split into train and test for the fold
+    train_df <- final_df %>%
+      select(-RegionID) %>%
+      slice(-test_indices)
+
+    test_df <- final_df %>%
+      select(-RegionID) %>%
+      slice(test_indices)
+  
+    # fit the two models
+    rf <- randomForest(Direction~., data=train_df, ntree=500)
+    dt <- rpart(Direction~., data=train_df)
+    
+    # gather results
+    test_df %>%
+      select(observed_label = Direction) %>%
+      mutate(fold=fold_number) %>%
+      mutate(prob_positive_rf = predict(rf, newdata=test_df, type="prob")[,"up"]) %>%
+      # add predicted labels for rf using a 0.5 probability cutoff
+      mutate(predicted_label_rf = ifelse(prob_positive_rf > 0.5, "up", "down")) %>%
+      mutate(prob_positive_dt = predict(dt, newdata=test_df, type="prob")[, "up"]) %>%
+      # add predicted labels for dt using a 0.5 probability cutoff
+      mutate(predicted_label_dt = ifelse(prob_positive_dt > 0.5, "up", "down"))
+}) %>%
+  # combine the five result data frames into one
+  purrr::reduce(bind_rows)
+result_df
+
+```
+
+Computing error rates for each fold in each model
+
+```{r error_rates}
+result_df %>%
+  mutate(error_rf = observed_label != predicted_label_rf,
+         error_dt = observed_label != predicted_label_dt) %>%
+  group_by(fold) %>%
+  summarize(random_forest = mean(error_rf), decision_tree = mean(error_dt)) %>%
+  tidyr::gather(model, error, -fold) %>%
+  lm(error~model, data=.) %>%
+  broom::tidy()
+
+```
+
+ROC curve
+
+```{r roc_curve}
+library(ROCR)
+
+# create a list of true observed labels 
+labels <- split(result_df$observed_label, result_df$fold)
+
+# now create a list of predictions for the RF and pass it to the ROCR::prediction function
+predictions_rf <- split(result_df$prob_positive_rf, result_df$fold) %>% prediction(labels)
+
+# do the same for the decision tree
+predictions_dt <- split(result_df$prob_positive_dt, result_df$fold) %>% prediction(labels)
+
+# compute average AUC for the RF
+mean_auc_rf <- predictions_rf %>%
+  performance(measure="auc") %>%
+  # I know, this line is ugly, but that's how it is
+  slot("y.values") %>% unlist() %>% 
+  mean()
+
+# compute average AUC for the DT
+mean_auc_dt <- predictions_dt %>%
+  performance(measure="auc") %>%
+  slot("y.values") %>% unlist() %>% 
+  mean()
+
+# plot the ROC curve for the RF
+predictions_rf %>%
+  performance(measure="tpr", x.measure="fpr") %>%
+  plot(avg="threshold", col="orange", lwd=2)
+
+# plot the ROC curve for the decision tree
+predictions_dt %>%
+  performance(measure="tpr", x.measure="fpr") %>%
+  plot(avg="threshold", col="blue", lwd=2, add=TRUE)
+
+# add a legend to the plot
+legend("bottomright",
+       legend=paste(c("rf", "d"), " AUC:", round(c(mean_auc_rf, mean_auc_dt), digits=3)),
+       col=c("orange", "blue"))
+
+```
+
+
+
+As can be seen from the AUROC plot, the random forest is a slightly better predictor in this experiment. It is the plotted orange line and sits above the blue line. The ideal plot for a ROC curve would be (0,1), or a vertical line to indicate all true positives. The orange line most resembles this. Also, as calculated, the random forest has more area under the curve than the decision tree. 
+
+Also looking at the confusion matrices, the random forest matrix showed a 31.25% miss prediction rate, where the decision tree had a 37.5% miss prediction rate. Again showing that the random forest is a slightly more accurate predictor.
+
+

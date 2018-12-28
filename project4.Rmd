@@ -1,0 +1,60 @@
+---
+title: "Project 4"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(stringr)
+
+```
+
+```{r map_setup}
+arrest_tab <- read_csv("http://www.hcbravo.org/IntroDataSci/misc/BPD_Arrests.csv")
+dat <- arrest_tab %>% 
+  filter(!is.na(`Location 1`)) %>%
+  separate(`Location 1`, c("lat","lng"), sep=",") %>%
+  mutate(lat=as.numeric(str_replace(lat, "\\(", ""))) %>%
+  mutate(lng=as.numeric(str_replace(lng, "\\)", ""))) %>%
+  sample_n(2000)
+dat
+
+
+```
+
+
+```{r map_disp}
+library(leaflet)
+
+pal <- colorFactor(c("blue", "pink"), domain = c('M', 'F'))
+
+dat %<>% group_by(district) %>%
+  mutate(avg_lat = mean(lat)) %>%
+  mutate(avg_lng = mean(lng)) %>%
+  ungroup()
+
+
+balto_map <- leaflet(dat) %>%
+  addTiles() %>%
+  setView(lat=39.29, lng=-76.61, zoom=11) %>%
+  addTiles() %>%
+  addCircleMarkers(popup = 
+                     paste("Race:", dat$race, "<br>",
+                           "Date:", dat$arrestDate ),
+             clusterOptions = markerClusterOptions(),
+             color = ~pal(dat$sex)) %>%
+  addMarkers(lat = dat$avg_lat, lng = dat$avg_lng, popup = dat$district)
+
+balto_map
+
+
+```
+
+
+Made a function pal to assign the color blue to Male arrests and pink to female arrests. Grouped the data by district and calculated the avg longitude and latitude to find a good point to add a marker for each Disctrict. District markers have a popup telling which district they are. Added circle markers and using the pal function from earlier made them pink or blue based on sex of the arrest data. Each has a popup telling the race and arrest date of the marker. Used clustering to cluster together arrests close in location. Yellow clusters indicate more data values. 
+
+

@@ -1,0 +1,252 @@
+---
+title: "HW_4"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+Part 1a)
+
+  $$Var(\bar{X}) = Var(\frac{1}{n}\sum_{i=1}^n X_i)$$
+
+  $$\frac{1}{n^2}\sum_{i=1}^n Var(X_i)$$
+   
+  $$\frac{1}{n^2}np(1-p)$$
+   
+  $$=\frac{1}{n}p(1-p)$$
+
+
+Part 1b)
+
+$$E\bar{X}=0.5$$
+$$Var(\bar{X}) = 0.005$$
+
+```{r variance_val}
+e_xbar <- 0.5
+v_xbar <- (1 / 50 ) * 0.5 *(1 -0.5)
+
+v_xbar
+```
+
+Part 1c)
+
+$$N(E\bar{X},\sqrt(Var(\bar{X})) = 0.3638247$$
+$$p(\bar{X} > \hat{p}_B) = 0.0004188565$$
+```{r central_limit_theorem}
+clt_val <- dnorm(e_xbar, sqrt(v_xbar))
+
+p_val <- 1-pnorm(.6, clt_val, sqrt(v_xbar) )
+
+clt_val
+
+p_val
+```
+Part 1d) 
+
+Yes, we should reject the null hypothesis because 
+
+$$p(\bar{X} > \hat{p}_B) \leq \alpha$$
+
+0.0004188565 <= .05
+
+Part 1e)
+
+Yes, we should still reject the null hypothesis because 
+
+$$p(\bar{X} > \hat{p}_B) \leq \alpha$$
+
+```{r new_vals}
+new_e_xbar <- 0.6
+
+new_v_xbar <- (1 / 100 ) * 0.6 *(1 -0.6)
+
+new_clt_val <- dnorm(new_e_xbar, sqrt(new_v_xbar))
+
+new_p_val <- 1 - pnorm(.6, new_clt_val, sqrt(new_v_xbar) )
+
+new_p_val
+
+```
+
+1f) Used example from lecture notes to generate a table, using probability = 0.5 instead of 0.7. 
+Can see that $$q_B = 0.43217836$$
+
+
+```{r qnorm_fun}
+get_estimate <- function(n, p=0.5) mean(sample(c(0,1), size=n, replace=TRUE, prob=c(1-p,p)))
+
+set.seed(1)
+
+tab <- data.frame(sample_size=c(10,100,500,1000,10000)) %>%
+  mutate(phat = sapply(sample_size,get_estimate)) %>%
+  mutate(se = sqrt(phat*(1-phat)) / sqrt(sample_size)) %>%
+  mutate(lower = phat + qnorm(.05/2, sd=se)) %>%
+  mutate(upper = phat + -qnorm(.05/2, sd=se))
+
+tab
+
+
+q_b <- 0.43217836
+```
+
+
+1g)  
+
+```{r smallest_improvement}
+sdi <- q_b - 0.5
+
+sdi
+
+```
+
+
+2a)
+
+$$E\bar{X}=0.75$$
+$$Var(\bar{X}) = 0.00375$$
+
+```{r diff_phat}
+e_xbar <- 0.75
+v_xbar <- (1 / 50 ) * 0.75 *(1 -0.75)
+
+v_xbar
+
+```
+2b)
+
+$$N(E\bar{X},\sqrt(Var(\bar{X})) = 0.3147$$
+
+$$p(\bar{X} > \hat{p}_B) = 1.589285e-06$$
+
+```{r clt_part_2}
+
+clt_val <- dnorm(e_xbar, sqrt(v_xbar))
+
+p_val <- 1-pnorm(0.6, clt_val, sqrt(v_xbar) )
+
+clt_val
+
+p_val
+
+```
+
+
+2c)
+Yes, the hypothesis should be rejected because 
+$$p(\bar{X} > \hat{p}_B) \leq \alpha$$
+2d)
+Yes, we should still reject the null hypothesis because 
+
+$$p(\bar{X} > \hat{p}_B) \leq \alpha$$
+
+```{r part2_new_vals}
+new_e_xbar <- 0.6
+
+new_v_xbar <- (1 / 100 ) * 0.6 *(1 -0.6)
+
+new_clt_val <- dnorm(new_e_xbar, sqrt(new_v_xbar))
+
+new_p_val <- 1 - pnorm(.6, new_clt_val, sqrt(new_v_xbar) )
+
+new_p_val
+
+```
+
+2e)
+
+```{r part2_qnorm}
+get_estimate <- function(n, p=0.75) mean(sample(c(0,1), size=n, replace=TRUE, prob=c(1-p,p)))
+
+set.seed(1)
+
+tab <- data.frame(sample_size=c(10,100,500,1000,10000)) %>%
+  mutate(phat = sapply(sample_size,get_estimate)) %>%
+  mutate(se = sqrt(phat*(1-phat)) / sqrt(sample_size)) %>%
+  mutate(lower = phat + qnorm(.05/2, sd=se)) %>%
+  mutate(upper = phat + -qnorm(.05/2, sd=se))
+
+tab
+
+q_b_two <- 0.6540293
+```
+
+$$q_B = 0.6540293$$
+
+
+
+2f)
+```{r smallest_detectable_improvement}
+sdi_2 <- q_b_two - 0.75
+
+sdi_2
+
+```
+
+Part 3)
+
+The value in 2f < 1g, this is most likely due to the fact that the expected click rate is much higher in part 2 at .75 than it is in part 1 as .5.
+
+
+Part 4)
+
+$$Var(Y) = Var(\bar{X}_B - \bar{X}_A)$$
+$$Var(\bar{X}_B)+Var(-\bar{X}_A)$$
+$$\frac{1}{X_B}p_B(1-p_B) + \frac{1}{X_A}p_A(1-p_A)$$
+$$(\frac{1}{n_B} + \frac{1}{n_A})p(1-p)$$
+4b)
+
+
+$$\frac{S_A + S_B}{n_A + n_B}$$
+```{r part4}
+s_a <-35
+s_b <-35
+n_a <-55
+n_b <-45
+
+p <- (s_a + s_b)/(n_a + n_b)
+
+p
+
+```
+
+
+
+4c)
+
+
+```{r part4_variance}
+v <- 1/100 * p*(1-p)
+v
+```
+Var(Y) = 0.0021
+
+
+4d)
+
+```{r part4_d}
+phat <- s_b/n_b - s_a/n_a
+phat
+
+```
+$\hat{p}= 0.1414141$
+
+4e)
+
+```{r part4_e}
+new_clt <- dnorm(p, sqrt(v))
+
+new_p_val <- 1 - pnorm(p, new_clt, sqrt(v))
+
+new_p_val
+```
+
+$$p(Y\gt\hat{p}) = 1.110223e-16$$
+
+4f) Yes we can reject, because it is less than $\alpha$
+
+

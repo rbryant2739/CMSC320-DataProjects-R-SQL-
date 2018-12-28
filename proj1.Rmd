@@ -1,0 +1,137 @@
+---
+title: "proj1"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+
+Part 1: Step 1 - Scraping
+
+first I loaded the url using the read_html function, then accessed the table by using its id, table-striped, within the html_node function. Then made it an html_table & set the column names to desired names, and finished the pipeline by calling the as.data.frame() function.
+
+```{r load_and_scrape}
+library(rvest)
+library(magrittr)
+library(tidyverse)
+
+url <- "https://www.spaceweatherlive.com/en/solar-activity/top-50-solar-flares"
+
+sf_tbl <- read_html(url) %>%
+  html_node(".table-striped") %>%
+  html_table() %>%
+  set_colnames(c("rank", "flare_classification", "date", "flare_region", "start_time", "maximum_time", "end_time", "movie")) %>%
+  as.data.frame()
+
+slice(sf_tbl, 1:10)
+
+```
+
+
+Part 1: Step 2 - Tidying
+
+First I dropped the movie column with select, then called unite on date & each of the time columns. Then I converted the new columns to POSIXct datetimes. Then dropped the old uneeded columns, start_time, end_time, max_time, and date using subset with their indexes. Then I used slice to show that the first 10 rows appear as desired.  
+
+```{r tidy}
+sf_tbl <- select(sf_tbl, -8)  %>%
+  unite(start_datetime, date, start_time, sep = " ", remove = FALSE)%>%
+  unite(max_datetime, date, maximum_time, sep = " ", remove = FALSE)%>%
+  unite(end_datetime, date, end_time, sep = " ", remove = FALSE)
+  
+sf_tbl$start_datetime <- as.POSIXct(sf_tbl$start_datetime, tz = "")
+sf_tbl$max_datetime <- as.POSIXct(sf_tbl$max_datetime, tz = "")
+sf_tbl$end_datetime <-  as.POSIXct(sf_tbl$end_datetime, tz = "")
+
+sf_tbl <- subset(sf_tbl, select = -c(6, 8:10))
+  
+slice(sf_tbl, 1:10)
+```
+Part 1: Step 3
+
+In step 3, I first read in the url to the nasa data and use read_html(), html_node("body"), and html_text to store all of the nasa data as one long string in nasa_text. I then use str_split on nasa_text using the new line character as the regex to split on. I then used unlist once because it returned it as a list of lists instead of one list. after that I dropped the first 15 rows because they were not part of the desired data, as well as the last 2 rows, and then called as.data.frame() to turn it into a data frame. At this point I just needed to separate the rows into columns. I did so using separate, passing in the desired column names, and separated on whitespace. This returned the desired dataframe with an additional column that I proceeded to drop. I showed a slice of the first ten rows of my data frame. 
+
+```{r nasa_scrape}
+url2 <- "https://cdaw.gsfc.nasa.gov/CME_list/radio/waves_type2.html"
+
+nasa_text  <- url2 %>%
+  read_html() %>%
+  html_node("body") %>%
+  html_text()
+
+nasa_rows = str_split(nasa_text, "\n")
+nasa_rows = unlist(nasa_rows)
+nasa_rows <- nasa_rows[-c(1:15, 527:529)] %>%
+  as.data.frame()
+
+nasa_table <- separate(nasa_rows, ., c("start_date", "start_time", "end_date", "end_time", "start_frequency", "end_frequency", "flare_location","flare_region", "flare_classification", "cme_date", "cme_time", "cme_angle", "cme_width", "cme_speed", "tb_deleted"), "\\s+")
+
+nasa_table <- nasa_table[-15]
+
+slice(nasa_table, 1:50)
+```
+
+Part 1: Step 4
+
+For Tidying, I first gathered the indices of values matching Halo and stored the values in halos and did the same with widths to use later. I then replaced missing values with NA. After that I concatinated the year number with the end date & cme date. After I united the dates & times. Then converted to POSIX datetimes. I then matched any CME datetimes that didnt have values and replaced them with NA.I then created halo_num column & widthlimitnum colums storing halos & widths. I used those values to translate to correlating logical columns halo & cme_width. I then dropped excess columns & converted integer types to integers. 
+
+```{r nasa_tidy}
+halos <- regexpr('Halo', nasa_table$cme_angle)
+widths <- regexpr('>', nasa_table$cme_width)
+
+nasa_table[nasa_table == "—-" | nasa_table == "Halo" | nasa_table == "LASCO DATA GAP" |nasa_table == "back" | nasa_table == ""] <- NA
+
+nasa_table$end_date <- paste(substring(nasa_table$start_date, 1,4), nasa_table$end_date, sep = "/")
+
+nasa_table$cme_date <- paste(substring(nasa_table$start_date, 1,4), nasa_table$cme_date, sep = "/")
+
+nasa_table <- unite(nasa_table, start_datetime, start_date, start_time, sep = " ", remove = FALSE)%>%
+  unite(cme_datetime, cme_date, cme_time, sep = " ", remove = FALSE)%>%
+  unite(end_datetime, end_date, end_time, sep = " ", remove = FALSE)
+  
+nasa_table$start_datetime <- as.POSIXct(nasa_table$start_datetime, tz = "")
+
+nasa_table$cme_datetime <- sub("[-]+", NA, nasa_table$cme_datetime)
+
+nasa_table$cme_datetime <- as.POSIXct(nasa_table$cme_datetime, tz = "")
+
+nasa_table$end_datetime <- as.POSIXct(nasa_table$end_datetime, tz = "")
+
+nasa_table$cme_width_limit_num <- widths
+
+nasa_table$halo_num <- halos
+
+nasa_table$halo <- FALSE
+nasa_table$cme_width_limit<-FALSE
+
+nasa_table$cme_width_limit[nasa_table$cme_width_limit_num != -1] <- TRUE
+
+nasa_table$halo[nasa_table$halo_num != -1] <- TRUE
+
+nasa_table <- select(nasa_table, -c(2,3,5,6,13,14,18,19))
+
+nasa_table$start_frequency <- sapply(nasa_table$start_frequency, as.integer)
+
+nasa_table$end_frequency <- sapply(nasa_table$end_frequency, as.integer)
+
+nasa_table$cme_angle <- sapply(nasa_table$cme_angle, as.integer)
+
+nasa_table$cme_speed <- sapply(nasa_table$cme_speed, as.integer)
+
+slice(nasa_table, 1:30)
+
+```
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
